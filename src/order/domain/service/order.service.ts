@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import {CreateRequestOrderDto} from 'src/order/presentation/dto/create.order.dto';
-import {CreateResultOrderDto} from '../dto/create-order.dto'
+import {CreateOrderDto, CreateResultOrderDto} from '../dto/create-order.dto'
 import { CartRepository } from 'src/cart/infra/cart.repository';
 import { PrismaService } from 'src/common/db/prisma.service';
 import { ProductRepository } from 'src/product/infra/product.repository';
+import { OrderRepository } from 'src/order/infra/order.repository';
+import {OrderDetailRepository} from 'src/order/infra/order.detail.repository'
+import { CreateOrderDetailDto } from '../dto/create-order.detail.dto';
 
 @Injectable()
 export class OrderService {
@@ -11,6 +14,8 @@ export class OrderService {
     constructor(
         private readonly cartRepository: CartRepository,
         private readonly productRepository: ProductRepository,
+        private readonly orderRepository : OrderRepository,
+        private readonly orderDetailRepository : OrderDetailRepository,
         private readonly prisma: PrismaService
     ){}
 
@@ -23,16 +28,66 @@ export class OrderService {
             throw new Error('장바구니 정보가 없습니다.')
         }
         
-        const result : any = await this.prisma.$transaction(async (tx) => {
+        const result : boolean = await this.prisma.$transaction(async (tx) => {
             this.cartRepository.deleteCarts(customerId, tx);
 
             const productIds = cartInfo.map((item) => item.product_id);
 
-            // const products = this.productRepository.
+            const products = await this.productRepository.getProductByIdsWithLock(productIds, tx);
 
+            let totalPrice = 0;
+            const orderDetails : CreateOrderDetailDto[] = [];
+            for(const cart of cartInfo){
+                const product = products.find((p) => p.id === cart.product_id);
+
+                if(!product){
+                    throw new Error(`상품 ID ${cart.product_id}를 찾을 수 없습니다.`);
+                }
+
+                if(product.qty < cart.qty){
+                    throw new Error(`상품 ${product.id}의 재고가 부족합니다.`);
+                }
+
+                totalPrice += cart.unit_price * cart.qty;
+
+                orderDetails.push({
+                    order_no : '',
+                    product_id : product.id,
+                    unit_price : cart.unit_price,
+                    qty : cart.qty,
+                    created_at : new Date(),
+                    updated_at : null
+                });
+            }
+
+            const orderNo = `Order-${Date.now()}`;
+            const createOrderDto = new CreateOrderDto();
+
+            createOrderDto.customerId = customerId;
+            createOrderDto.orderNo = orderNo;
+            createOrderDto.totalPrice = totalPrice;
+            createOrderDto.status = '주문완료';
+            createOrderDto.createdAt = new Date();
+            createOrderDto.updatedAt = new Date();
+
+            await this.orderRepository.createOrder(createOrderDto, tx);
+
+            for (const detail of orderDetails) {
+                const detailWithOrderNo = {...detail, order_no : orderNo};
+                await this.orderDetailRepository.createOrderDetail(detailWithOrderNo, tx);
+            }
+
+            return true;
+        });
+
+        return new CreateResultOrderDto({
+            id : customerId,
+            isSuccess : result
         })
+    }
 
-        return result;
+    async findOne(id : number){
+        return await this.orderRepository.getOrderById(id);
     }
 
 }

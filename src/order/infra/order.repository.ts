@@ -5,26 +5,23 @@ import { CreateOrderDto } from "../domain/dto/create-order.dto"
 
 
 @Injectable()
-export class OrderRepository{
-    constructor(private readonly prisma : PrismaService){}
+export class OrderRepository {
+	constructor(
+		private readonly prisma: PrismaService
+	) { }
 
-    async getOrderById(id : number) : Promise<order>{
-        const orderInfo : order = await this.prisma.order.findUnique({
-            where : {id : id}
-        });
+	async getOrderById(id: number): Promise<order> {
+		const orderInfo: order = await this.prisma.order.findUnique({
+			where: { id: id },
+		});
+		return orderInfo;
+	}
 
-        return orderInfo;
-    }
-
-    async createOrder(createOrderDto : CreateOrderDto) : Promise<order>{
-        const orderData = CreateOrderDto.to(createOrderDto);
-        const orderInfo: order = await this.prisma.order.create({
-            data : orderData
-        });
-
-        return orderInfo;
-    }
-
-
-
+	async createOrder(createOrdertDto: CreateOrderDto, tx: Prisma.TransactionClient = this.prisma): Promise<boolean> {
+		const orderData = CreateOrderDto.to(createOrdertDto);
+		await tx.order.create({
+			data: orderData,
+		});
+		return true;
+	}
 }
