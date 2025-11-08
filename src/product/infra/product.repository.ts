@@ -6,6 +6,14 @@ import { Prisma, product } from '@prisma/client';
 export class ProductRepository {
     constructor(private readonly prisma: PrismaService) {}
 
+    async getProductsByPage(page : number) : Promise<product[]>{
+        const productsInfo : product[] = await this.prisma.product.findMany({
+            where : {}
+        })
+
+        return productsInfo;
+    }
+
     async getProductById(id: number): Promise<product> {
         const productInfo: product = await this.prisma.product.findUnique({
             where: { id: id },
