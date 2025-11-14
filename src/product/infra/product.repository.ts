@@ -4,11 +4,21 @@ import { Prisma, product } from '@prisma/client';
 
 @Injectable()
 export class ProductRepository {
-    constructor(private readonly prisma: PrismaService) {}
+    limit: number;
+    constructor(
+        private readonly prisma: PrismaService
+    ) {
+        this.limit = 2
+    }
+
+    setOffset(page : number, limit : number = this.limit){
+        return (page - 1)*limit;
+    }
 
     async getProductsByPage(page : number) : Promise<product[]>{
         const productsInfo : product[] = await this.prisma.product.findMany({
-            where : {}
+            skip : this.setOffset(page),
+            take : this.limit
         })
 
         return productsInfo;

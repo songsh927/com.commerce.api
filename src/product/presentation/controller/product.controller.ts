@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ProductService } from 'src/product/domain/service/product.service';
 
 @Controller('product')
@@ -6,14 +6,17 @@ export class ProductController {
 
     constructor(private readonly productService : ProductService){}
     
-    @Get(':page')
-    findAllByPage(@Param('page') page : string){
-        // return this this.productService
+    @Get()
+    findAllByPage(@Query('page') page : string){
+        if(!page){
+            page = '1';
+        }
+        return this.productService.findAllByPage(+page);
     }
 
-    @Get('id')
+    @Get(':id')
     findById(@Param('id') id : string){
-        return this.productService.findOneById(+id)
+        return this.productService.findOneById(+id);
     }
 
 }
