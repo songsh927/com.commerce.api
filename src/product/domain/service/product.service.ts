@@ -10,8 +10,7 @@ export class ProductService {
     ){}
 
     async findAllByPage(page : number) : Promise<product[]>{
-
-        return [];
+        return await this.productRepository.getProductsByPage(page);
     }
 
     async findOneById(id : number){
