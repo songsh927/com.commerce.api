@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { CreateCartDto, CreateResultCartDto } from '../dto/CreateCartDto';
-import { CartRepository } from 'src/cart/infra/cart.repository';
-import { cart } from '@prisma/client';
+// import { CartRepository } from 'src/cart/infra/cart.repository';
+import { CartRedisRepository } from 'src/cart/infra/cart.redis.repository';
+// import { cart } from '@prisma/client';
+import { CartEntity } from '../entity/cart.entity';
 
 @Injectable()
 export class CartService {
 
     constructor(
-        private readonly cartRepository : CartRepository
+        // private readonly cartRepository : CartRepository
+        private readonly cartRepository : CartRedisRepository // Redis 기반으로 리팩토링
     ){}
 
     async create(createCartDto : CreateCartDto) : Promise<boolean>{
@@ -16,11 +19,10 @@ export class CartService {
         return true;
     }
 
-    async findOne(id : number) : Promise<CreateResultCartDto>{
+    async findOne(id : number) : Promise<CartEntity[]>{
 
-        const cartInfo : cart =  await this.cartRepository.getCartById(id);
+        return await this.cartRepository.getCartById(id);
 
-        return CreateResultCartDto.of(cartInfo);
     }
 
     async cartForOrder(){

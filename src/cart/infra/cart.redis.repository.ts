@@ -21,7 +21,7 @@ export class CartRedisRepository{
 
             return {
                 customer_id : customerId,
-                product_id : Number(productKey.split(':')),
+                product_id : Number(productKey.split(':')[1]),
                 unit_price : Number(unitPrice),
                 qty : Number(qty)
             };
@@ -76,6 +76,25 @@ export class CartRedisRepository{
 
         const ttl = 3600;
         await this.redis.expire(cartKey, ttl);
+
+    }
+
+    async getCartById(customerId : number) : Promise<CartEntity[]>{
+
+        const cartKey = `commerceCart:${customerId}`;
+        const cart = await this.redis.hgetall(cartKey);
+
+        
+        const cartInfo : CartEntity[] = Object.keys(cart).map((key) =>{
+            return {
+                customer_id : customerId,
+                product_id : Number(key.split(':')[1]),
+                unit_price : Number(cart[key].split(':')[0]),
+                qty : Number(cart[key].split(':')[1])
+            }
+        })
+        
+        return cartInfo;
 
     }
 

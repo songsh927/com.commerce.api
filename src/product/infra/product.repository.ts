@@ -59,7 +59,7 @@ export class ProductRepository {
             where: { id: productId },
             data: {
                 qty: {
-                decrement: qty,
+                    decrement: qty,
                 },
             },
         });

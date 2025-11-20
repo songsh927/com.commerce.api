@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {CreateRequestOrderDto} from 'src/order/presentation/dto/create.order.dto';
 import {CreateOrderDto, CreateResultOrderDto} from '../dto/create-order.dto'
-import { CartRepository } from 'src/cart/infra/cart.repository';
+// import { CartRepository } from 'src/cart/infra/cart.repository';
+import { CartRedisRepository } from 'src/cart/infra/cart.redis.repository';
 import { PrismaService } from 'src/common/db/prisma.service';
 import { ProductRepository } from 'src/product/infra/product.repository';
 import { OrderRepository } from 'src/order/infra/order.repository';
@@ -12,7 +13,8 @@ import { CreateOrderDetailDto } from '../dto/create-order.detail.dto';
 export class OrderService {
 
     constructor(
-        private readonly cartRepository: CartRepository,
+        // private readonly cartRepository: CartRepository,
+        private readonly cartRepository: CartRedisRepository,
         private readonly productRepository: ProductRepository,
         private readonly orderRepository : OrderRepository,
         private readonly orderDetailRepository : OrderDetailRepository,
@@ -29,7 +31,8 @@ export class OrderService {
         }
         
         const result : boolean = await this.prisma.$transaction(async (tx) => {
-            this.cartRepository.deleteCarts(customerId, tx);
+            // RDBMS에서 Redis로 리팩토링 => 주문완료 후 카트정보 삭제로 변경
+            // this.cartRepository.deleteCarts(customerId, tx);
 
             const productIds = cartInfo.map((item) => item.product_id);
 
@@ -49,6 +52,8 @@ export class OrderService {
                 }
 
                 totalPrice += cart.unit_price * cart.qty;
+
+                await this.productRepository.updateProductByIds(product.id, cart.qty, tx);
 
                 orderDetails.push({
                     order_no : '',
@@ -79,6 +84,10 @@ export class OrderService {
 
             return true;
         });
+
+        if(result){
+            await this.cartRepository.deleteCarts(customerId);
+        }
 
         return new CreateResultOrderDto({
             id : customerId,
