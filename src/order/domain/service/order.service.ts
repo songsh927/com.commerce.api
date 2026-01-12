@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import {CreateRequestOrderDto} from 'src/order/presentation/dto/create.order.dto';
 import {CreateOrderDto, CreateResultOrderDto} from '../dto/create-order.dto'
 // import { CartRepository } from 'src/cart/infra/cart.repository';
@@ -8,6 +8,8 @@ import { ProductRepository } from 'src/product/infra/product.repository';
 import { OrderRepository } from 'src/order/infra/order.repository';
 import {OrderDetailRepository} from 'src/order/infra/order.detail.repository'
 import { CreateOrderDetailDto } from '../dto/create-order.detail.dto';
+import { KafkaCartDto } from 'src/cart/presentation/dto/kafka-cart.dto';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class OrderService {
@@ -18,7 +20,8 @@ export class OrderService {
         private readonly productRepository: ProductRepository,
         private readonly orderRepository : OrderRepository,
         private readonly orderDetailRepository : OrderDetailRepository,
-        private readonly prisma: PrismaService
+        private readonly prisma: PrismaService,
+        @Inject('order-kafka') private readonly kafkaProducer:ClientKafka
     ){}
 
     async create(createRequestOrderDto : CreateRequestOrderDto) : Promise<CreateResultOrderDto>{
@@ -86,7 +89,11 @@ export class OrderService {
         });
 
         if(result){
-            await this.cartRepository.deleteCarts(customerId);
+            // await this.cartRepository.deleteCarts(customerId);
+            // Kafka produce 이벤트 실행
+            const id : number = customerId;
+            const kafkaCartDto : KafkaCartDto = {customerId : id};
+            await this.kafkaProducer.emit('cart.delete', kafkaCartDto)
         }
 
         return new CreateResultOrderDto({

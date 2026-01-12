@@ -4,6 +4,7 @@ import { CreateCartDto, CreateResultCartDto } from '../dto/CreateCartDto';
 import { CartRedisRepository } from 'src/cart/infra/cart.redis.repository';
 // import { cart } from '@prisma/client';
 import { CartEntity } from '../entity/cart.entity';
+import { KafkaCartDto } from 'src/cart/presentation/dto/kafka-cart.dto';
 
 @Injectable()
 export class CartService {
@@ -25,8 +26,10 @@ export class CartService {
 
     }
 
-    async cartForOrder(){
+    async cartForOrder(kafkaCartDto : KafkaCartDto) : Promise<boolean>{
+        this.cartRepository.deleteCarts(kafkaCartDto.customerId);
 
+        return true;
     }
 
 }
